@@ -102,6 +102,39 @@ func (field *PlayField) PutSpaceAtCoordinateIfEmpty(y int, x int, space Space) e
 	return field.putSpaceAtCoordinate(y, x, space)
 }
 
+// put single space content into the play field regardless of what is present
+// this is mainly used for garbage being put in the field
+// garbage overwrites the existing piece and unlinks anything linked
+func (field *PlayField) ForcePutSingleSpaceIntoBoard(y int, x int, space Space) error {
+	if space.Linkage != Unlinked {
+		return errors.New("cannot put a single linked space")
+	}
+
+	// check coord is in bounds
+	current, err := field.GetSpaceAtCoordinate(y, x)
+
+	if err != nil {
+		// out of bounds
+		return err
+	}
+
+	// check if current space state is linked and unlink it if needed
+	if current.Linkage != Unlinked {
+		// it's a pill, so unlink its partner
+		linkedY, linkedX, err := GetLinkedCoordinate(y, x, current.Linkage)
+		if err != nil {
+			return err
+		}
+
+		// get linked, set to unlinked, put in board
+		linked, _ := field.GetSpaceAtCoordinate(linkedY, linkedX)
+		linked.Linkage = Unlinked
+		field.putSpaceAtCoordinate(linkedY, linkedX, linked)
+	}
+
+	return field.putSpaceAtCoordinate(y, x, space)
+}
+
 // put space content in the play field if it leaves a legal board
 // a legal board has no linked pills without a matching link adjacent.
 // This means no putting pieces with a linkage, use PutLinkedSpaces for that
@@ -175,7 +208,10 @@ func (field *PlayField) GetBottomRowIndex() int {
 	return len(field.spaces) - 1
 }
 
-func (field *PlayField) EvaluateBoardIteration() ([][]NextIteration, NextIteration) {
+// see what the next move and space states will be on iteration
+// returns a field sized 2D slice of next iteration for each square,
+// the next iteration type, and an array of colors for each cleared streak
+func (field *PlayField) EvaluateBoardIteration() ([][]NextIteration, NextIteration, []SpaceColor) {
 	// initialize board iteration field to empty
 	nextIterationField := make([][]NextIteration, len(field.spaces))
 	for i := range nextIterationField {
@@ -202,7 +238,7 @@ func (field *PlayField) EvaluateBoardIteration() ([][]NextIteration, NextIterati
 	// if we found a falling piece, we're done
 	// return the field and that the board has movement
 	if undockedPieceFound {
-		return nextIterationField, Fall
+		return nextIterationField, Fall, nil
 	}
 
 	// no falling pieces, check for clears
@@ -213,14 +249,16 @@ func (field *PlayField) EvaluateBoardIteration() ([][]NextIteration, NextIterati
 	nextIter := NoAction
 
 	// look for rows with 4 or more consecutive color matches
+	colorSlice := make([]SpaceColor, 0)
 	for y := range field.spaces {
 		x := 0
 		for {
 			if field.checkCoordinateInBounds(y, x) != nil {
 				// out of bounds
 				if currentStreak >= 4 && currentColor != Uncolored {
-					// have match stored, mark it
+					// have match stored, mark it and add to streak slice
 					nextIter = Clear
+					colorSlice = append(colorSlice, currentColor)
 					for i := x - currentStreak; i < x; i++ {
 						nextIterationField[y][i] = Clear
 					}
@@ -241,8 +279,9 @@ func (field *PlayField) EvaluateBoardIteration() ([][]NextIteration, NextIterati
 					// next piece is different
 					// check if we have a row of 4+
 					if currentStreak >= 4 && currentColor != Uncolored {
-						// have match stored, mark it
+						// have match stored, mark it and add to returned streak colors
 						nextIter = Clear
+						colorSlice = append(colorSlice, currentColor)
 						for i := x - currentStreak; i < x; i++ {
 							nextIterationField[y][i] = Clear
 						}
@@ -271,8 +310,9 @@ func (field *PlayField) EvaluateBoardIteration() ([][]NextIteration, NextIterati
 			if field.checkCoordinateInBounds(y, x) != nil {
 				// out of bounds
 				if currentStreak >= 4 && currentColor != Uncolored {
-					// have match stored, mark it
+					// have match stored, mark it and add to color slice
 					nextIter = Clear
+					colorSlice = append(colorSlice, currentColor)
 					for i := y - currentStreak; i < y; i++ {
 						nextIterationField[i][x] = Clear
 					}
@@ -288,8 +328,9 @@ func (field *PlayField) EvaluateBoardIteration() ([][]NextIteration, NextIterati
 					// next piece is different
 					// check if we have a row of 4+
 					if currentStreak >= 4 && currentColor != Uncolored {
-						// have match stored, mark it
+						// have match stored, mark it and add to streak slice
 						nextIter = Clear
+						colorSlice = append(colorSlice, currentColor)
 						for i := y - currentStreak; i < y; i++ {
 							nextIterationField[i][x] = Clear
 						}
@@ -306,7 +347,7 @@ func (field *PlayField) EvaluateBoardIteration() ([][]NextIteration, NextIterati
 		}
 	}
 
-	return nextIterationField, nextIter
+	return nextIterationField, nextIter, colorSlice
 }
 
 // iterate changes through the board
@@ -314,7 +355,7 @@ func (field *PlayField) EvaluateBoardIteration() ([][]NextIteration, NextIterati
 // and should cause a panic level reaction
 func (field *PlayField) IterateBoard() error {
 	log.Trace().Msg("Entering IterateBoard()")
-	iterField, nextIter := field.EvaluateBoardIteration()
+	iterField, nextIter, _ := field.EvaluateBoardIteration()
 
 	// no changes means nothing to iterate
 	if nextIter == NoAction {

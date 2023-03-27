@@ -46,7 +46,7 @@ func TestClearChecking(t *testing.T) {
 
 	DrawBoard(field)
 
-	iterField, nextIter := field.EvaluateBoardIteration()
+	iterField, nextIter, _ := field.EvaluateBoardIteration()
 
 	DrawNextIteration(iterField)
 
@@ -62,11 +62,11 @@ func TestClearChecking(t *testing.T) {
 	field.PutSpaceAtCoordinateIfEmpty(bottomRow-2, 0, Space{Pill, Unlinked, Blue})
 	field.PutSpaceAtCoordinateIfEmpty(bottomRow-3, 0, Space{Pill, Unlinked, Blue})
 
-	iterField, nextIter = field.EvaluateBoardIteration()
+	iterField, nextIter, _ = field.EvaluateBoardIteration()
 
 	DrawNextIteration(iterField)
 
-	if nextIter != NoAction {
+	if nextIter == NoAction {
 		t.Fatal("clear iteration returned no changes")
 	}
 
@@ -86,7 +86,7 @@ func TestSinglePillStackFallChecking(t *testing.T) {
 
 	DrawBoard(field)
 
-	iterField, nextIter := field.EvaluateBoardIteration()
+	iterField, nextIter, _ := field.EvaluateBoardIteration()
 
 	DrawNextIteration(iterField)
 
@@ -102,7 +102,7 @@ func TestSinglePillStackFallChecking(t *testing.T) {
 
 	DrawBoard(field)
 
-	iterField, nextIter = field.EvaluateBoardIteration()
+	iterField, nextIter, _ = field.EvaluateBoardIteration()
 
 	DrawNextIteration(iterField)
 
@@ -118,12 +118,12 @@ func TestSinglePillStackFallChecking(t *testing.T) {
 
 	DrawBoard(field)
 
-	iterField, nextIter = field.EvaluateBoardIteration()
+	iterField, nextIter, _ = field.EvaluateBoardIteration()
 
 	DrawNextIteration(iterField)
 
-	if nextIter != Fall {
-		t.Fatal("fall iteration returned no changes")
+	if nextIter != NoAction {
+		t.Fatal("stack from bottom had a change")
 	}
 }
 
@@ -145,7 +145,7 @@ func TestLinkedSpaceIteration(t *testing.T) {
 		t.Fatalf("put linked pill err: %v", err)
 	}
 	DrawBoard(field)
-	iterField, nextIter := field.EvaluateBoardIteration()
+	iterField, nextIter, _ := field.EvaluateBoardIteration()
 	DrawNextIteration(iterField)
 	if nextIter != Fall {
 		t.Fatal("fall iteration returned no changes")
@@ -161,7 +161,7 @@ func TestLinkedSpaceIteration(t *testing.T) {
 		t.Fatalf("put linked pill err: %v", err)
 	}
 	DrawBoard(field)
-	iterField, nextIter = field.EvaluateBoardIteration()
+	iterField, nextIter, _ = field.EvaluateBoardIteration()
 	DrawNextIteration(iterField)
 	if nextIter != Fall {
 		t.Fatal("fall iteration returned no changes")
@@ -173,7 +173,7 @@ func TestLinkedSpaceIteration(t *testing.T) {
 		t.Fatalf("put linked pill err: %v", err)
 	}
 	DrawBoard(field)
-	iterField, nextIter = field.EvaluateBoardIteration()
+	iterField, nextIter, _ = field.EvaluateBoardIteration()
 	DrawNextIteration(iterField)
 	if nextIter != NoAction {
 		t.Fatal("fall iteration should have no changes")
@@ -189,7 +189,7 @@ func TestLinkedSpaceIteration(t *testing.T) {
 		t.Fatalf("could not place piece %v", err)
 	}
 	DrawBoard(field)
-	iterField, nextIter = field.EvaluateBoardIteration()
+	iterField, nextIter, _ = field.EvaluateBoardIteration()
 	DrawNextIteration(iterField)
 	if nextIter != Clear {
 		t.Fatal("col should be detected")
@@ -223,7 +223,7 @@ func TestVirusSpaceIteration(t *testing.T) {
 
 	// make sure there are no changes
 	DrawBoard(field)
-	iterField, nextIter := field.EvaluateBoardIteration()
+	iterField, nextIter, _ := field.EvaluateBoardIteration()
 	DrawNextIteration(iterField)
 	if nextIter != NoAction {
 		t.Fatal("no changes should have been found")
@@ -236,7 +236,7 @@ func TestVirusSpaceIteration(t *testing.T) {
 		t.Fatalf("could not place linked piece %v", err)
 	}
 	DrawBoard(field)
-	iterField, nextIter = field.EvaluateBoardIteration()
+	iterField, nextIter, _ = field.EvaluateBoardIteration()
 	DrawNextIteration(iterField)
 	if nextIter != Clear {
 		t.Fatal("clear should have caused change")
@@ -260,7 +260,7 @@ func TestIterationExecution(t *testing.T) {
 	field.PutTwoLinkedSpacesAtCoordinate(bottomRow-3, 3, space, linkedSpace)
 
 	DrawBoard(field)
-	iterField, nextIter := field.EvaluateBoardIteration()
+	iterField, nextIter, _ := field.EvaluateBoardIteration()
 	DrawNextIteration(iterField)
 	if nextIter != Clear {
 		t.Fatal("clear should be next iteration")
@@ -272,7 +272,7 @@ func TestIterationExecution(t *testing.T) {
 
 	// iterate should leave two uncleared stacked blocks to fall 2 spots
 	DrawBoard(field)
-	iterField, nextIter = field.EvaluateBoardIteration()
+	iterField, nextIter, _ = field.EvaluateBoardIteration()
 	DrawNextIteration(iterField)
 	if nextIter != Fall {
 		t.Fatal("fall should be next iteration")
@@ -284,7 +284,7 @@ func TestIterationExecution(t *testing.T) {
 
 	// run second fall
 	DrawBoard(field)
-	iterField, nextIter = field.EvaluateBoardIteration()
+	iterField, nextIter, _ = field.EvaluateBoardIteration()
 	DrawNextIteration(iterField)
 	if nextIter != Fall {
 		t.Fatal("fall should be next iteration")
@@ -295,7 +295,7 @@ func TestIterationExecution(t *testing.T) {
 	}
 
 	DrawBoard(field)
-	iterField, nextIter = field.EvaluateBoardIteration()
+	iterField, nextIter, _ = field.EvaluateBoardIteration()
 	DrawNextIteration(iterField)
 	if nextIter != NoAction {
 		t.Fatal("no action should be next iteration")
